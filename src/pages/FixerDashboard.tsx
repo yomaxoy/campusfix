@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
-import { Power, TrendingUp, Clock, MapPin, Euro, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Power, TrendingUp, Clock, MapPin, Euro, Check, ArrowRight, Navigation, MapPinCheck, Wrench, CheckCircle } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { Toast } from '../components/ui/Toast';
 import { useOrderStore } from '../stores/useOrderStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import type { OrderStatus } from '../types';
 
 export const FixerDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(true);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const { user } = useAuthStore();
-  const { orders, acceptOrder, getOrdersByFixerId } = useOrderStore();
+  const { orders, acceptOrder, updateOrder, getOrdersByFixerId } = useOrderStore();
 
   // Get pending orders (not yet accepted)
   const availableOrders = orders.filter(o => o.status === 'pending');
@@ -37,7 +43,57 @@ export const FixerDashboard: React.FC = () => {
   const handleAcceptOrder = (orderId: string) => {
     if (user) {
       acceptOrder(orderId, user.id);
+      setToastMessage('Auftrag erfolgreich angenommen!');
+      setShowToast(true);
     }
+  };
+
+  const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
+    updateOrder(orderId, { status: newStatus });
+    const statusMessages: Record<string, string> = {
+      en_route: 'Status aktualisiert: Auf dem Weg',
+      arrived: 'Status aktualisiert: Angekommen',
+      in_progress: 'Status aktualisiert: Reparatur läuft',
+      completed: 'Auftrag als abgeschlossen markiert!',
+    };
+    setToastMessage(statusMessages[newStatus] || 'Status aktualisiert');
+    setShowToast(true);
+  };
+
+  const getStatusBadge = (status: OrderStatus) => {
+    const variants: Record<OrderStatus, 'success' | 'warning' | 'default' | 'error'> = {
+      pending: 'warning',
+      accepted: 'default',
+      en_route: 'default',
+      arrived: 'default',
+      in_progress: 'warning',
+      completed: 'success',
+      cancelled: 'error',
+      escalated: 'error',
+    };
+
+    const labels: Record<OrderStatus, string> = {
+      pending: 'Ausstehend',
+      accepted: 'Angenommen',
+      en_route: 'Unterwegs',
+      arrived: 'Angekommen',
+      in_progress: 'In Arbeit',
+      completed: 'Abgeschlossen',
+      cancelled: 'Storniert',
+      escalated: 'Eskaliert',
+    };
+
+    return <Badge variant={variants[status]}>{labels[status]}</Badge>;
+  };
+
+  const getNextStatusAction = (currentStatus: OrderStatus) => {
+    const actions: Record<string, { status: OrderStatus; label: string; icon: React.ReactNode }> = {
+      accepted: { status: 'en_route', label: 'Auf dem Weg', icon: <Navigation className="w-4 h-4" /> },
+      en_route: { status: 'arrived', label: 'Angekommen', icon: <MapPinCheck className="w-4 h-4" /> },
+      arrived: { status: 'in_progress', label: 'Reparatur starten', icon: <Wrench className="w-4 h-4" /> },
+      in_progress: { status: 'completed', label: 'Abschließen', icon: <CheckCircle className="w-4 h-4" /> },
+    };
+    return actions[currentStatus];
   };
 
   const formatDate = (dateString: string) => {
@@ -51,7 +107,15 @@ export const FixerDashboard: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <>
+      {showToast && (
+        <Toast
+          type="success"
+          message={toastMessage}
+          onClose={() => setShowToast(false)}
+        />
+      )}
+      <div className="max-w-6xl mx-auto">
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -129,6 +193,77 @@ export const FixerDashboard: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      {/* Active Orders */}
+      {myActiveOrders.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-slate-800 mb-6">Meine aktiven Aufträge</h2>
+          <div className="space-y-4">
+            {myActiveOrders.map((order) => {
+              const nextAction = getNextStatusAction(order.status);
+              return (
+                <Card key={order.id} className="border-2 border-primary-200 bg-primary-50/30">
+                  <div className="flex items-start justify-between gap-6">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <h3 className="text-xl font-semibold text-slate-800">
+                          {order.issueType}
+                        </h3>
+                        {getStatusBadge(order.status)}
+                      </div>
+
+                      <p className="text-slate-700 mb-2">
+                        {order.deviceBrand && order.deviceModel
+                          ? `${order.deviceBrand} ${order.deviceModel}`
+                          : order.subcategory}
+                      </p>
+
+                      {order.issueDescription && (
+                        <p className="text-sm text-slate-600 mb-3">
+                          {order.issueDescription}
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          <span>{order.location.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Euro className="w-4 h-4" />
+                          <span className="font-semibold text-slate-700">
+                            {order.priceEstimate.min}-{order.priceEstimate.max}€
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      {nextAction && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleUpdateStatus(order.id, nextAction.status)}
+                        >
+                          {nextAction.icon}
+                          <span className="ml-2">{nextAction.label}</span>
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/orders/${order.id}`)}
+                      >
+                        Details
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Available Orders */}
       <div>
@@ -237,6 +372,7 @@ export const FixerDashboard: React.FC = () => {
           </div>
         </div>
       </Card>
-    </div>
+      </div>
+    </>
   );
 };
