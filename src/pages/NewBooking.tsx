@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Smartphone, Bike, Home, ChevronLeft, ChevronRight, Check, Upload, X } from 'lucide-react';
+import { Smartphone, Bike, Home, ChevronLeft, ChevronRight, Check, Upload, X, Calendar, Package, MapPin } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -36,8 +36,11 @@ export const NewBooking: React.FC = () => {
   const [selectedSafeZone, setSelectedSafeZone] = useState('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
+  const [deliveryMethod, setDeliveryMethod] = useState<'meetup' | 'shipping'>('meetup');
+  const [appointmentDate, setAppointmentDate] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
 
-  const totalSteps = 5;
+  const totalSteps = 6;
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
@@ -85,6 +88,9 @@ export const NewBooking: React.FC = () => {
       issueDescription: description || selectedIssue.label,
       photoUrl: photoPreview || undefined,
       location: safeZone,
+      deliveryMethod,
+      appointmentDate: appointmentDate || undefined,
+      shippingAddress: deliveryMethod === 'shipping' ? shippingAddress : undefined,
       priceEstimate: selectedIssue.priceRange,
       status: 'pending' as const,
       createdAt: new Date().toISOString(),
@@ -104,7 +110,12 @@ export const NewBooking: React.FC = () => {
       case 2: return selectedSubcategory !== null && selectedIssue !== null;
       case 3: return true; // Optional step
       case 4: return selectedSafeZone !== '';
-      case 5: return true;
+      case 5:
+        if (deliveryMethod === 'shipping') {
+          return shippingAddress.trim() !== '';
+        }
+        return true; // meetup doesn't require additional fields
+      case 6: return true;
       default: return false;
     }
   };
@@ -121,13 +132,13 @@ export const NewBooking: React.FC = () => {
       <div className="max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Neue Reparatur buchen</h1>
-        <p className="text-slate-600 mt-2">Beschreibe dein Problem in 5 einfachen Schritten</p>
+        <p className="text-slate-600 mt-2">Beschreibe dein Problem in 6 einfachen Schritten</p>
       </div>
 
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
-          {[1, 2, 3, 4, 5].map((step) => (
+          {[1, 2, 3, 4, 5, 6].map((step) => (
             <div key={step} className="flex items-center flex-1">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-medium transition-all ${
@@ -140,7 +151,7 @@ export const NewBooking: React.FC = () => {
               >
                 {step < currentStep ? <Check className="w-5 h-5" /> : step}
               </div>
-              {step < 5 && (
+              {step < 6 && (
                 <div
                   className={`flex-1 h-1 mx-2 ${
                     step < currentStep ? 'bg-primary-600' : 'bg-slate-200'
@@ -155,6 +166,7 @@ export const NewBooking: React.FC = () => {
           <span>Problem</span>
           <span>Details</span>
           <span>Ort</span>
+          <span>Termin</span>
           <span>Übersicht</span>
         </div>
       </div>
@@ -366,8 +378,116 @@ export const NewBooking: React.FC = () => {
           </div>
         )}
 
-        {/* Step 5: Summary */}
-        {currentStep === 5 && selectedCategory && selectedSubcategory && selectedIssue && (
+        {/* Step 5: Appointment & Delivery Method */}
+        {currentStep === 5 && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-slate-800">Terminvereinbarung & Übergabe</h2>
+            <p className="text-slate-600">Wähle wie du dein Gerät übergeben möchtest</p>
+
+            {/* Delivery Method Selection */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-3 block">Übergabemethode</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  onClick={() => setDeliveryMethod('meetup')}
+                  className={`p-6 rounded-xl border-2 transition-all text-left ${
+                    deliveryMethod === 'meetup'
+                      ? 'border-primary-600 bg-primary-50'
+                      : 'border-slate-200 hover:border-primary-300'
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      deliveryMethod === 'meetup' ? 'bg-primary-600' : 'bg-slate-100'
+                    }`}>
+                      <MapPin className={`w-6 h-6 ${
+                        deliveryMethod === 'meetup' ? 'text-white' : 'text-slate-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-800 mb-1">Persönliches Treffen</h3>
+                      <p className="text-sm text-slate-600">Triff den Fixer an der gewählten Safe Zone</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setDeliveryMethod('shipping')}
+                  className={`p-6 rounded-xl border-2 transition-all text-left ${
+                    deliveryMethod === 'shipping'
+                      ? 'border-primary-600 bg-primary-50'
+                      : 'border-slate-200 hover:border-primary-300'
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      deliveryMethod === 'shipping' ? 'bg-primary-600' : 'bg-slate-100'
+                    }`}>
+                      <Package className={`w-6 h-6 ${
+                        deliveryMethod === 'shipping' ? 'text-white' : 'text-slate-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-800 mb-1">Versand</h3>
+                      <p className="text-sm text-slate-600">Sende dein Gerät per Post an den Fixer</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Shipping Address (only if shipping selected) */}
+            {deliveryMethod === 'shipping' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                <h3 className="font-semibold text-slate-800 mb-4">Versandadresse</h3>
+                <Textarea
+                  label="Deine Adresse für die Rücksendung"
+                  value={shippingAddress}
+                  onChange={(e) => setShippingAddress(e.target.value)}
+                  placeholder="z.B. Max Mustermann&#10;Musterstraße 123&#10;64289 Darmstadt"
+                  rows={4}
+                  required
+                />
+                <p className="text-sm text-blue-800 mt-3">
+                  📦 Der Fixer wird dir nach Auftragsannahme die Versandadresse mitteilen
+                </p>
+              </div>
+            )}
+
+            {/* Appointment Date (optional for meetup) */}
+            {deliveryMethod === 'meetup' && (
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">
+                  Wunschtermin (optional)
+                </label>
+                <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <Calendar className="w-5 h-5 text-slate-600" />
+                  <Input
+                    type="datetime-local"
+                    value={appointmentDate}
+                    onChange={(e) => setAppointmentDate(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="flex-1 border-0 bg-transparent p-0 focus:ring-0"
+                  />
+                </div>
+                <p className="text-sm text-slate-600 mt-2">
+                  💡 Der genaue Termin wird nach Auftragsannahme mit dem Fixer abgestimmt
+                </p>
+              </div>
+            )}
+
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <p className="text-sm text-green-800">
+                {deliveryMethod === 'meetup'
+                  ? '🛡️ Safe Zones sind öffentliche, gut besuchte Orte auf dem Campus für deine Sicherheit'
+                  : '📮 Stelle sicher, dass dein Gerät sicher verpackt ist. Versandkosten werden separat abgerechnet.'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 6: Summary */}
+        {currentStep === 6 && selectedCategory && selectedSubcategory && selectedIssue && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-slate-800">Zusammenfassung</h2>
             <p className="text-slate-600">Bitte überprüfe deine Angaben</p>
@@ -411,6 +531,27 @@ export const NewBooking: React.FC = () => {
                 <p className="font-medium text-slate-800">
                   {safeZones.find(sz => sz.id === selectedSafeZone)?.name}
                 </p>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-sm text-slate-600 mb-1">Übergabemethode</p>
+                <p className="font-medium text-slate-800">
+                  {deliveryMethod === 'meetup' ? '📍 Persönliches Treffen' : '📦 Versand'}
+                </p>
+                {deliveryMethod === 'shipping' && shippingAddress && (
+                  <p className="text-sm text-slate-600 mt-2 whitespace-pre-line">{shippingAddress}</p>
+                )}
+                {deliveryMethod === 'meetup' && appointmentDate && (
+                  <p className="text-sm text-slate-600 mt-2">
+                    Wunschtermin: {new Date(appointmentDate).toLocaleString('de-DE', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                )}
               </div>
 
               <div className="bg-primary-50 border-2 border-primary-600 rounded-xl p-4">

@@ -23,6 +23,9 @@ export interface RepairOrder {
   issueDescription: string;
   photoUrl?: string;
   location: SafeZone;
+  deliveryMethod: 'meetup' | 'shipping';
+  appointmentDate?: string;
+  shippingAddress?: string;
   priceEstimate: { min: number; max: number };
   finalPrice?: number;
   status: OrderStatus;

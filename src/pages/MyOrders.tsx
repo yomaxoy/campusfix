@@ -154,6 +154,7 @@ export const MyOrders: React.FC = () => {
                     <div className="flex items-center gap-4 text-sm text-slate-500">
                       <span>📍 {order.location.name}</span>
                       <span>📅 {formatDate(order.createdAt)}</span>
+                      <span>{order.deliveryMethod === 'meetup' ? '👤 Persönlich' : '📦 Versand'}</span>
                     </div>
 
                     {order.status === 'completed' && order.rating && (

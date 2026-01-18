@@ -203,12 +203,40 @@ export const OrderDetail: React.FC = () => {
                   {order.finalPrice ? `${order.finalPrice}€` : `${order.priceEstimate.min}-${order.priceEstimate.max}€`}
                 </span>
               </div>
+              <div className="flex justify-between py-2">
+                <span className="text-slate-600">Übergabe</span>
+                <span className="font-medium text-slate-800">
+                  {order.deliveryMethod === 'meetup' ? '📍 Persönlich' : '📦 Versand'}
+                </span>
+              </div>
             </div>
 
             {order.issueDescription && (
               <div className="mt-4 pt-4 border-t border-slate-200">
                 <p className="text-sm text-slate-600 mb-1">Beschreibung</p>
                 <p className="text-slate-800">{order.issueDescription}</p>
+              </div>
+            )}
+
+            {order.deliveryMethod === 'shipping' && order.shippingAddress && (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <p className="text-sm text-slate-600 mb-1">Versandadresse</p>
+                <p className="text-slate-800 whitespace-pre-line">{order.shippingAddress}</p>
+              </div>
+            )}
+
+            {order.appointmentDate && (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <p className="text-sm text-slate-600 mb-1">Wunschtermin</p>
+                <p className="text-slate-800">
+                  {new Date(order.appointmentDate).toLocaleString('de-DE', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
               </div>
             )}
           </Card>
