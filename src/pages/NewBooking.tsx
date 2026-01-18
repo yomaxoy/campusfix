@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Smartphone, Bike, Home, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Smartphone, Bike, Home, ChevronLeft, ChevronRight, Check, Upload, X } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/Textarea';
+import { Toast } from '../components/ui/Toast';
 import { categories } from '../data/categories';
 import { safeZones } from '../data/safeZones';
 import { useOrderStore } from '../stores/useOrderStore';
@@ -33,6 +34,8 @@ export const NewBooking: React.FC = () => {
   const [deviceModel, setDeviceModel] = useState('');
   const [description, setDescription] = useState('');
   const [selectedSafeZone, setSelectedSafeZone] = useState('');
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
 
   const totalSteps = 5;
 
@@ -46,6 +49,21 @@ export const NewBooking: React.FC = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoPreview(null);
   };
 
   const handleSubmit = () => {
@@ -65,6 +83,7 @@ export const NewBooking: React.FC = () => {
       deviceModel: deviceModel || undefined,
       issueType: selectedIssue.id,
       issueDescription: description || selectedIssue.label,
+      photoUrl: photoPreview || undefined,
       location: safeZone,
       priceEstimate: selectedIssue.priceRange,
       status: 'pending' as const,
@@ -73,7 +92,10 @@ export const NewBooking: React.FC = () => {
     };
 
     addOrder(newOrder);
-    navigate('/my-orders');
+    setShowToast(true);
+    setTimeout(() => {
+      navigate('/my-orders');
+    }, 1000);
   };
 
   const canProceed = () => {
@@ -88,7 +110,15 @@ export const NewBooking: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <>
+      {showToast && (
+        <Toast
+          type="success"
+          message="Buchung erfolgreich! Du wirst weitergeleitet..."
+          onClose={() => setShowToast(false)}
+        />
+      )}
+      <div className="max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Neue Reparatur buchen</h1>
         <p className="text-slate-600 mt-2">Beschreibe dein Problem in 5 einfachen Schritten</p>
@@ -259,6 +289,44 @@ export const NewBooking: React.FC = () => {
               rows={5}
             />
 
+            {/* Photo Upload */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">
+                Foto hochladen (optional)
+              </label>
+              {!photoPreview ? (
+                <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-primary-500 hover:bg-primary-50 transition-all">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Upload className="w-10 h-10 text-slate-400 mb-3" />
+                    <p className="mb-2 text-sm text-slate-600">
+                      <span className="font-semibold">Klicken zum Hochladen</span> oder Drag & Drop
+                    </p>
+                    <p className="text-xs text-slate-500">PNG, JPG oder JPEG (MAX. 5MB)</p>
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                  />
+                </label>
+              ) : (
+                <div className="relative">
+                  <img
+                    src={photoPreview}
+                    alt="Preview"
+                    className="w-full h-64 object-cover rounded-xl border-2 border-slate-200"
+                  />
+                  <button
+                    onClick={handleRemovePhoto}
+                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all shadow-lg"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <p className="text-sm text-blue-800">
                 💡 Tipp: Je genauer du das Problem beschreibst, desto besser kann der Fixer sich vorbereiten!
@@ -327,6 +395,17 @@ export const NewBooking: React.FC = () => {
                 </div>
               )}
 
+              {photoPreview && (
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <p className="text-sm text-slate-600 mb-2">Hochgeladenes Foto</p>
+                  <img
+                    src={photoPreview}
+                    alt="Uploaded"
+                    className="w-full max-h-64 object-cover rounded-lg"
+                  />
+                </div>
+              )}
+
               <div className="bg-slate-50 rounded-xl p-4">
                 <p className="text-sm text-slate-600 mb-1">Treffpunkt</p>
                 <p className="font-medium text-slate-800">
@@ -377,6 +456,7 @@ export const NewBooking: React.FC = () => {
           )}
         </div>
       </Card>
-    </div>
+      </div>
+    </>
   );
 };
