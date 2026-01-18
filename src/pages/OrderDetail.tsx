@@ -1,23 +1,74 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Clock, CheckCircle, Send, Star } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, CheckCircle, Star, MessageCircle, XCircle, Navigation, MapPinCheck, Wrench } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Textarea } from '../components/ui/Textarea';
+import { Toast } from '../components/ui/Toast';
 import { useOrderStore } from '../stores/useOrderStore';
+import { useMessageStore } from '../stores/useMessageStore';
+import { useAuthStore } from '../stores/useAuthStore';
 import { mockUsers } from '../data/mockUsers';
 import type { OrderStatus } from '../types';
 
-const statusConfig: Record<OrderStatus, { label: string; variant: 'success' | 'warning' | 'error' | 'info'; color: string }> = {
-  pending: { label: 'Sucht Fixer', variant: 'warning', color: 'bg-yellow-500' },
-  accepted: { label: 'Akzeptiert', variant: 'info', color: 'bg-blue-500' },
-  en_route: { label: 'Unterwegs', variant: 'info', color: 'bg-blue-500' },
-  arrived: { label: 'Angekommen', variant: 'info', color: 'bg-blue-500' },
-  in_progress: { label: 'In Bearbeitung', variant: 'warning', color: 'bg-yellow-500' },
-  completed: { label: 'Abgeschlossen', variant: 'success', color: 'bg-green-500' },
-  cancelled: { label: 'Storniert', variant: 'error', color: 'bg-red-500' },
-  escalated: { label: 'Eskaliert', variant: 'error', color: 'bg-red-500' },
+const statusConfig: Record<OrderStatus, { label: string; description: string; icon: React.ReactNode; variant: 'success' | 'warning' | 'error' | 'info'; color: string }> = {
+  pending: {
+    label: 'Sucht Fixer',
+    description: 'Dein Auftrag wurde erstellt und wartet auf einen Fixer',
+    icon: <Clock className="w-5 h-5 text-white" />,
+    variant: 'warning',
+    color: 'bg-yellow-500'
+  },
+  accepted: {
+    label: 'Akzeptiert',
+    description: 'Ein Fixer hat deinen Auftrag angenommen',
+    icon: <CheckCircle className="w-5 h-5 text-white" />,
+    variant: 'info',
+    color: 'bg-blue-500'
+  },
+  en_route: {
+    label: 'Unterwegs',
+    description: 'Der Fixer ist auf dem Weg zur Safe Zone',
+    icon: <Navigation className="w-5 h-5 text-white" />,
+    variant: 'info',
+    color: 'bg-blue-500'
+  },
+  arrived: {
+    label: 'Angekommen',
+    description: 'Der Fixer ist am Treffpunkt eingetroffen',
+    icon: <MapPinCheck className="w-5 h-5 text-white" />,
+    variant: 'info',
+    color: 'bg-blue-500'
+  },
+  in_progress: {
+    label: 'In Bearbeitung',
+    description: 'Die Reparatur wird durchgeführt',
+    icon: <Wrench className="w-5 h-5 text-white" />,
+    variant: 'warning',
+    color: 'bg-yellow-500'
+  },
+  completed: {
+    label: 'Abgeschlossen',
+    description: 'Der Auftrag wurde erfolgreich abgeschlossen',
+    icon: <CheckCircle className="w-5 h-5 text-white" />,
+    variant: 'success',
+    color: 'bg-green-500'
+  },
+  cancelled: {
+    label: 'Storniert',
+    description: 'Der Auftrag wurde storniert',
+    icon: <XCircle className="w-5 h-5 text-white" />,
+    variant: 'error',
+    color: 'bg-red-500'
+  },
+  escalated: {
+    label: 'Eskaliert',
+    description: 'Problem gemeldet - Support wurde informiert',
+    icon: <XCircle className="w-5 h-5 text-white" />,
+    variant: 'error',
+    color: 'bg-red-500'
+  },
 };
 
 const statusSteps: OrderStatus[] = ['pending', 'accepted', 'en_route', 'arrived', 'in_progress', 'completed'];
@@ -25,10 +76,13 @@ const statusSteps: OrderStatus[] = ['pending', 'accepted', 'en_route', 'arrived'
 export const OrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { getOrderById, updateOrder } = useOrderStore();
-  const [message, setMessage] = useState('');
+  const { getUnreadCount } = useMessageStore();
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const order = id ? getOrderById(id) : undefined;
 
@@ -49,19 +103,30 @@ export const OrderDetail: React.FC = () => {
   const fixer = order.fixerId ? mockUsers.find(u => u.id === order.fixerId) : null;
   const statusInfo = statusConfig[order.status];
   const currentStepIndex = statusSteps.indexOf(order.status);
+  const unreadCount = user ? getUnreadCount(order.id, user.id) : 0;
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      // In a real app, this would send to backend
-      console.log('Sending message:', message);
-      setMessage('');
+  const handleCancelOrder = () => {
+    if (confirm('Möchtest du diesen Auftrag wirklich stornieren?')) {
+      updateOrder(order.id, { status: 'cancelled' });
+      setToastMessage('Auftrag wurde storniert');
+      setShowToast(true);
     }
   };
 
   const handleSubmitReview = () => {
     if (rating > 0) {
       updateOrder(order.id, { rating, review: review || undefined });
+      setToastMessage('Bewertung wurde gespeichert!');
+      setShowToast(true);
     }
+  };
+
+  const getTimestampForStatus = (status: OrderStatus): string | null => {
+    if (status === 'pending') return order.createdAt;
+    if (status === order.status) return order.updatedAt;
+    if (statusSteps.indexOf(status) > currentStepIndex) return null;
+    // Estimate timestamps for passed statuses
+    return order.updatedAt;
   };
 
   const formatDate = (dateString: string) => {
@@ -76,7 +141,15 @@ export const OrderDetail: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <>
+      {showToast && (
+        <Toast
+          type="success"
+          message={toastMessage}
+          onClose={() => setShowToast(false)}
+        />
+      )}
+      <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <Button
@@ -148,42 +221,67 @@ export const OrderDetail: React.FC = () => {
                 const stepConfig = statusConfig[step];
                 const isCompleted = index <= currentStepIndex;
                 const isCurrent = index === currentStepIndex;
+                const timestamp = getTimestampForStatus(step);
 
                 return (
                   <div key={step} className="relative flex items-start mb-8 last:mb-0">
                     {/* Vertical Line */}
                     {index < statusSteps.length - 1 && (
                       <div
-                        className={`absolute left-4 top-10 w-0.5 h-full ${
+                        className={`absolute left-5 top-12 w-0.5 h-full ${
                           isCompleted ? 'bg-primary-600' : 'bg-slate-200'
                         }`}
                       />
                     )}
 
-                    {/* Circle */}
+                    {/* Circle/Icon */}
                     <div
-                      className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center ${
+                      className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center ${
                         isCompleted ? stepConfig.color : 'bg-slate-200'
-                      } ${isCurrent ? 'ring-4 ring-primary-100' : ''}`}
+                      } ${isCurrent ? 'ring-4 ring-primary-100 shadow-lg' : ''}`}
                     >
-                      {isCompleted && (
-                        <CheckCircle className="w-5 h-5 text-white" />
-                      )}
+                      {isCompleted ? stepConfig.icon : <div className="w-2 h-2 bg-slate-400 rounded-full" />}
                     </div>
 
                     {/* Content */}
                     <div className="ml-4 flex-1">
-                      <p className={`font-medium ${isCompleted ? 'text-slate-800' : 'text-slate-400'}`}>
-                        {stepConfig.label}
+                      <div className="flex items-center justify-between">
+                        <p className={`font-semibold ${isCompleted ? 'text-slate-800' : 'text-slate-400'}`}>
+                          {stepConfig.label}
+                        </p>
+                        {timestamp && isCompleted && (
+                          <span className="text-xs text-slate-500">
+                            {formatDate(timestamp)}
+                          </span>
+                        )}
+                      </div>
+                      <p className={`text-sm mt-1 ${isCompleted ? 'text-slate-600' : 'text-slate-400'}`}>
+                        {stepConfig.description}
                       </p>
                       {isCurrent && (
-                        <p className="text-sm text-slate-600 mt-1">Aktueller Status</p>
+                        <Badge variant="info" className="mt-2 text-xs">
+                          Aktueller Status
+                        </Badge>
                       )}
                     </div>
                   </div>
                 );
               })}
             </div>
+
+            {/* Cancel Button - only if not completed or cancelled */}
+            {!['completed', 'cancelled'].includes(order.status) && (
+              <div className="mt-6 pt-6 border-t border-slate-200">
+                <Button
+                  variant="outline"
+                  onClick={handleCancelOrder}
+                  className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Auftrag stornieren
+                </Button>
+              </div>
+            )}
           </Card>
 
           {/* Review Section (if completed and not rated yet) */}
@@ -319,38 +417,31 @@ export const OrderDetail: React.FC = () => {
           {/* Chat */}
           {fixer && (
             <Card>
-              <h3 className="text-lg font-bold text-slate-800 mb-4">Nachrichten</h3>
-              <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
-                <div className="bg-slate-100 rounded-xl p-3">
-                  <p className="text-xs text-slate-500 mb-1">{fixer.name}</p>
-                  <p className="text-sm text-slate-800">Hallo! Ich bin auf dem Weg zur Safe Zone.</p>
-                </div>
-                <div className="bg-primary-100 rounded-xl p-3 ml-auto max-w-[80%]">
-                  <p className="text-xs text-slate-500 mb-1">Du</p>
-                  <p className="text-sm text-slate-800">Super, bis gleich!</p>
-                </div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-800">Nachrichten</h3>
+                {unreadCount > 0 && (
+                  <Badge variant="error" className="text-xs">
+                    {unreadCount} neu
+                  </Badge>
+                )}
               </div>
 
-              <div className="flex gap-2">
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Nachricht schreiben..."
-                  rows={2}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!message.trim()}
-                  className="self-end"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
+              <p className="text-sm text-slate-600 mb-4">
+                Kommuniziere mit {fixer.name} über den Chat
+              </p>
+
+              <Button
+                onClick={() => navigate('/messages')}
+                className="w-full"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Zum Chat
+              </Button>
             </Card>
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
