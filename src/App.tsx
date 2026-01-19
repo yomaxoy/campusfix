@@ -10,13 +10,9 @@ import { Messages } from './pages/Messages';
 import { Profile } from './pages/Profile';
 import { FixerDashboard } from './pages/FixerDashboard';
 import { useAuthStore } from './stores/useAuthStore';
-import { useOrderStatusSimulation } from './hooks/useOrderStatusSimulation';
 
 function App() {
   const { isAuthenticated } = useAuthStore();
-
-  // Enable automatic status progression for demo purposes
-  useOrderStatusSimulation();
 
   return (
     <BrowserRouter>

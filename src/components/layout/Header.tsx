@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Bell, User, LogOut } from 'lucide-react';
+import { Menu, User, LogOut } from 'lucide-react';
 import { Badge } from '../ui/Badge';
+import { NotificationCenter } from '../ui/NotificationCenter';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 interface HeaderProps {
@@ -42,10 +43,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         {/* Right: Notifications & User */}
         <div className="flex items-center gap-4">
           {/* Notifications */}
-          <button className="relative p-2 hover:bg-slate-100 rounded-lg transition-colors">
-            <Bell className="w-5 h-5 text-slate-600" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          <NotificationCenter />
 
           {/* User Profile */}
           <div className="relative">

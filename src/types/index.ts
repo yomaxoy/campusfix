@@ -83,3 +83,14 @@ export interface Message {
   timestamp: string;
   read: boolean;
 }
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'order_accepted' | 'order_status_changed' | 'new_message' | 'order_completed' | 'order_cancelled' | 'fixer_arrived' | 'fixer_en_route';
+  title: string;
+  message: string;
+  orderId?: string;
+  read: boolean;
+  timestamp: string;
+}
