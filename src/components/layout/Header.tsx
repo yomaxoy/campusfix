@@ -33,10 +33,11 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <Menu className="w-6 h-6 text-slate-600" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">CF</span>
-            </div>
-            <h1 className="text-xl font-bold text-slate-800">CampusFix</h1>
+            <img
+              src="/campusfix-logo.png"
+              alt="CampusFix Logo"
+              className="h-10 w-auto"
+            />
           </div>
         </div>
 

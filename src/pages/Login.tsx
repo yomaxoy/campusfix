@@ -41,13 +41,12 @@ export const Login: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-4">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 bg-primary-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-4xl">CF</span>
-              </div>
+              <img
+                src="/campusfix-logo.png"
+                alt="CampusFix Logo"
+                className="h-32 w-auto"
+              />
             </div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">
-              CampusFix
-            </h1>
             <p className="text-slate-600">Peer-to-Peer Reparaturen für Studierende</p>
           </div>
 
