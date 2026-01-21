@@ -10,6 +10,7 @@ interface MessageState {
   markAsRead: (orderId: string, userId: string) => void;
   getUnreadCount: (orderId: string, userId: string) => number;
   getTotalUnreadCount: (userId: string) => number;
+  reloadFromStorage: () => void;
 }
 
 export const useMessageStore = create<MessageState>()(
@@ -44,6 +45,18 @@ export const useMessageStore = create<MessageState>()(
         get().messages.filter(
           (msg) => msg.senderId !== userId && !msg.read
         ).length,
+
+      reloadFromStorage: () => {
+        const stored = localStorage.getItem('campusfix-messages');
+        if (stored) {
+          try {
+            const { state } = JSON.parse(stored);
+            set({ messages: state.messages });
+          } catch (e) {
+            console.error('Failed to reload messages:', e);
+          }
+        }
+      },
     }),
     {
       name: 'campusfix-messages',

@@ -10,6 +10,7 @@ interface NotificationState {
   getUnreadCount: (userId: string) => number;
   getNotificationsByUserId: (userId: string) => Notification[];
   clearNotifications: (userId: string) => void;
+  reloadFromStorage: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>()(
@@ -55,6 +56,18 @@ export const useNotificationStore = create<NotificationState>()(
         set((state) => ({
           notifications: state.notifications.filter((n) => n.userId !== userId),
         })),
+
+      reloadFromStorage: () => {
+        const stored = localStorage.getItem('campusfix-notifications');
+        if (stored) {
+          try {
+            const { state } = JSON.parse(stored);
+            set({ notifications: state.notifications });
+          } catch (e) {
+            console.error('Failed to reload notifications:', e);
+          }
+        }
+      },
     }),
     {
       name: 'campusfix-notifications',

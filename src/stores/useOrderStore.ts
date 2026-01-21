@@ -11,6 +11,7 @@ interface OrderState {
   getOrdersByCustomerId: (customerId: string) => RepairOrder[];
   getOrdersByFixerId: (fixerId: string) => RepairOrder[];
   acceptOrder: (orderId: string, fixerId: string) => void;
+  reloadFromStorage: () => void;
 }
 
 export const useOrderStore = create<OrderState>()(
@@ -94,7 +95,26 @@ export const useOrderStore = create<OrderState>()(
         set((state) => ({
           orders: state.orders.map((order) =>
             order.id === orderId
-              ? { ...order, fixerId, status: 'accepted', updatedAt: new Date().toISOString() }
+              ? {
+                  ...order,
+                  fixerId,
+                  status: 'pending', // Keep pending until negotiation complete
+                  updatedAt: new Date().toISOString(),
+                  negotiation: {
+                    partsResponsibility: undefined,
+                    partsNotes: '',
+                    formalitiesProposedBy: undefined,
+                    formalitiesConfirmedBy: [],
+                    proposedPrice: undefined,
+                    priceProposedBy: undefined,
+                    priceConfirmedBy: [],
+                    proposedLocation: order.location,
+                    proposedDate: order.appointmentDate,
+                    meetupProposedBy: undefined,
+                    meetupConfirmedBy: [],
+                    allConfirmed: false,
+                  }
+                }
               : order
           ),
         }));
@@ -107,7 +127,7 @@ export const useOrderStore = create<OrderState>()(
               userId: order.customerId,
               type: 'order_accepted',
               title: 'Auftrag angenommen!',
-              message: 'Ein Fixer hat deinen Auftrag angenommen und wird sich bald melden.',
+              message: 'Ein Fixer hat deinen Auftrag angenommen. Bitte klärt nun die Details.',
               orderId: order.id,
               read: false,
             });
@@ -122,6 +142,18 @@ export const useOrderStore = create<OrderState>()(
 
       getOrdersByFixerId: (fixerId) =>
         get().orders.filter((order) => order.fixerId === fixerId),
+
+      reloadFromStorage: () => {
+        const stored = localStorage.getItem('campusfix-orders');
+        if (stored) {
+          try {
+            const { state } = JSON.parse(stored);
+            set({ orders: state.orders });
+          } catch (e) {
+            console.error('Failed to reload orders:', e);
+          }
+        }
+      },
     }),
     {
       name: 'campusfix-orders',

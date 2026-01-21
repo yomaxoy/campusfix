@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Menu, User, LogOut } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { NotificationCenter } from '../ui/NotificationCenter';
+import { SyncButton } from '../SyncButton';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 interface HeaderProps {
@@ -41,8 +42,11 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           </div>
         </div>
 
-        {/* Right: Notifications & User */}
+        {/* Right: Sync, Notifications & User */}
         <div className="flex items-center gap-4">
+          {/* Sync Button */}
+          <SyncButton />
+
           {/* Notifications */}
           <NotificationCenter />
 

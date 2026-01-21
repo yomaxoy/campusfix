@@ -39,8 +39,10 @@ export const NewBooking: React.FC = () => {
   const [deliveryMethod, setDeliveryMethod] = useState<'meetup' | 'shipping'>('meetup');
   const [appointmentDate, setAppointmentDate] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
+  const [partsResponsibility, setPartsResponsibility] = useState<'fixer' | 'customer' | 'none'>('none');
+  const [partsNotes, setPartsNotes] = useState('');
 
-  const totalSteps = 6;
+  const totalSteps = 5;
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
@@ -91,6 +93,8 @@ export const NewBooking: React.FC = () => {
       deliveryMethod,
       appointmentDate: appointmentDate || undefined,
       shippingAddress: deliveryMethod === 'shipping' ? shippingAddress : undefined,
+      partsResponsibility,
+      partsNotes: partsNotes || undefined,
       priceEstimate: selectedIssue.priceRange,
       status: 'pending' as const,
       createdAt: new Date().toISOString(),
@@ -109,13 +113,12 @@ export const NewBooking: React.FC = () => {
       case 1: return selectedCategory !== null;
       case 2: return selectedSubcategory !== null && selectedIssue !== null;
       case 3: return true; // Optional step
-      case 4: return selectedSafeZone !== '';
-      case 5:
+      case 4:
         if (deliveryMethod === 'shipping') {
           return shippingAddress.trim() !== '';
         }
-        return true; // meetup doesn't require additional fields
-      case 6: return true;
+        return selectedSafeZone !== '' && appointmentDate !== '';
+      case 5: return true;
       default: return false;
     }
   };
@@ -138,7 +141,7 @@ export const NewBooking: React.FC = () => {
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
-          {[1, 2, 3, 4, 5, 6].map((step) => (
+          {[1, 2, 3, 4, 5].map((step) => (
             <div key={step} className="flex items-center flex-1">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-medium transition-all ${
@@ -151,7 +154,7 @@ export const NewBooking: React.FC = () => {
               >
                 {step < currentStep ? <Check className="w-5 h-5" /> : step}
               </div>
-              {step < 6 && (
+              {step < 5 && (
                 <div
                   className={`flex-1 h-1 mx-2 ${
                     step < currentStep ? 'bg-primary-600' : 'bg-slate-200'
@@ -165,8 +168,7 @@ export const NewBooking: React.FC = () => {
           <span>Kategorie</span>
           <span>Problem</span>
           <span>Details</span>
-          <span>Ort</span>
-          <span>Termin</span>
+          <span>Übergabe</span>
           <span>Übersicht</span>
         </div>
       </div>
@@ -301,6 +303,55 @@ export const NewBooking: React.FC = () => {
               rows={5}
             />
 
+            {/* Ersatzteile */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-3 block">
+                Ersatzteile
+              </label>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setPartsResponsibility('none')}
+                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    partsResponsibility === 'none'
+                      ? 'border-primary-600 bg-primary-50'
+                      : 'border-slate-200 hover:border-primary-300'
+                  }`}
+                >
+                  <p className="font-medium text-slate-800">Keine Ersatzteile nötig</p>
+                </button>
+                <button
+                  onClick={() => setPartsResponsibility('fixer')}
+                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    partsResponsibility === 'fixer'
+                      ? 'border-primary-600 bg-primary-50'
+                      : 'border-slate-200 hover:border-primary-300'
+                  }`}
+                >
+                  <p className="font-medium text-slate-800">Fixer besorgt Ersatzteile</p>
+                </button>
+                <button
+                  onClick={() => setPartsResponsibility('customer')}
+                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    partsResponsibility === 'customer'
+                      ? 'border-primary-600 bg-primary-50'
+                      : 'border-slate-200 hover:border-primary-300'
+                  }`}
+                >
+                  <p className="font-medium text-slate-800">Ich besorge Ersatzteile selbst</p>
+                </button>
+              </div>
+              {partsResponsibility !== 'none' && (
+                <Textarea
+                  label="Notizen zu Ersatzteilen (optional)"
+                  value={partsNotes}
+                  onChange={(e) => setPartsNotes(e.target.value)}
+                  placeholder="z.B. spezifische Teile, Marken, etc."
+                  rows={2}
+                  className="mt-3"
+                />
+              )}
+            </div>
+
             {/* Photo Upload */}
             <div>
               <label className="text-sm font-medium text-slate-700 mb-2 block">
@@ -347,42 +398,11 @@ export const NewBooking: React.FC = () => {
           </div>
         )}
 
-        {/* Step 4: Safe Zone Selection */}
+        {/* Step 4: Delivery Method & Location */}
         {currentStep === 4 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-slate-800">Wo soll die Reparatur stattfinden?</h2>
-            <p className="text-slate-600">Wähle eine Safe Zone auf dem Campus</p>
-
-            <div className="space-y-3">
-              {safeZones.filter(sz => sz.isAvailable).map((zone) => (
-                <button
-                  key={zone.id}
-                  onClick={() => setSelectedSafeZone(zone.id)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                    selectedSafeZone === zone.id
-                      ? 'border-primary-600 bg-primary-50'
-                      : 'border-slate-200 hover:border-primary-300'
-                  }`}
-                >
-                  <p className="font-medium text-slate-800">{zone.name}</p>
-                  <p className="text-sm text-slate-600">{zone.address}</p>
-                </button>
-              ))}
-            </div>
-
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <p className="text-sm text-green-800">
-                🛡️ Safe Zones sind öffentliche, gut besuchte Orte auf dem Campus für deine Sicherheit
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Appointment & Delivery Method */}
-        {currentStep === 5 && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-slate-800">Terminvereinbarung & Übergabe</h2>
-            <p className="text-slate-600">Wähle wie du dein Gerät übergeben möchtest</p>
+            <h2 className="text-2xl font-bold text-slate-800">Übergabe</h2>
+            <p className="text-slate-600">Wähle die Übergabemethode und den Ort</p>
 
             {/* Delivery Method Selection */}
             <div>
@@ -436,7 +456,58 @@ export const NewBooking: React.FC = () => {
               </div>
             </div>
 
-            {/* Shipping Address (only if shipping selected) */}
+            {/* Safe Zone (only if meetup) */}
+            {deliveryMethod === 'meetup' && (
+              <>
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-3 block">Safe Zone</label>
+                  <div className="space-y-3">
+                    {safeZones.filter(sz => sz.isAvailable).map((zone) => (
+                      <button
+                        key={zone.id}
+                        onClick={() => setSelectedSafeZone(zone.id)}
+                        className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                          selectedSafeZone === zone.id
+                            ? 'border-primary-600 bg-primary-50'
+                            : 'border-slate-200 hover:border-primary-300'
+                        }`}
+                      >
+                        <p className="font-medium text-slate-800">{zone.name}</p>
+                        <p className="text-sm text-slate-600">{zone.address}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 mb-2 block">
+                    Wunschtermin
+                  </label>
+                  <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <Calendar className="w-5 h-5 text-slate-600" />
+                    <Input
+                      type="datetime-local"
+                      value={appointmentDate}
+                      onChange={(e) => setAppointmentDate(e.target.value)}
+                      min={new Date().toISOString().slice(0, 16)}
+                      className="flex-1"
+                      required
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Der genaue Termin wird später mit dem Fixer abgestimmt
+                  </p>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <p className="text-sm text-green-800">
+                    🛡️ Safe Zones sind öffentliche, gut besuchte Orte auf dem Campus für deine Sicherheit
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Shipping Address (only if shipping) */}
             {deliveryMethod === 'shipping' && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
                 <h3 className="font-semibold text-slate-800 mb-4">Versandadresse</h3>
@@ -453,41 +524,11 @@ export const NewBooking: React.FC = () => {
                 </p>
               </div>
             )}
-
-            {/* Appointment Date (optional for meetup) */}
-            {deliveryMethod === 'meetup' && (
-              <div>
-                <label className="text-sm font-medium text-slate-700 mb-2 block">
-                  Wunschtermin (optional)
-                </label>
-                <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                  <Calendar className="w-5 h-5 text-slate-600" />
-                  <Input
-                    type="datetime-local"
-                    value={appointmentDate}
-                    onChange={(e) => setAppointmentDate(e.target.value)}
-                    min={new Date().toISOString().slice(0, 16)}
-                    className="flex-1 border-0 bg-transparent p-0 focus:ring-0"
-                  />
-                </div>
-                <p className="text-sm text-slate-600 mt-2">
-                  💡 Der genaue Termin wird nach Auftragsannahme mit dem Fixer abgestimmt
-                </p>
-              </div>
-            )}
-
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <p className="text-sm text-green-800">
-                {deliveryMethod === 'meetup'
-                  ? '🛡️ Safe Zones sind öffentliche, gut besuchte Orte auf dem Campus für deine Sicherheit'
-                  : '📮 Stelle sicher, dass dein Gerät sicher verpackt ist. Versandkosten werden separat abgerechnet.'}
-              </p>
-            </div>
           </div>
         )}
 
-        {/* Step 6: Summary */}
-        {currentStep === 6 && selectedCategory && selectedSubcategory && selectedIssue && (
+        {/* Step 5: Summary */}
+        {currentStep === 5 && selectedCategory && selectedSubcategory && selectedIssue && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-slate-800">Zusammenfassung</h2>
             <p className="text-slate-600">Bitte überprüfe deine Angaben</p>
@@ -527,10 +568,15 @@ export const NewBooking: React.FC = () => {
               )}
 
               <div className="bg-slate-50 rounded-xl p-4">
-                <p className="text-sm text-slate-600 mb-1">Treffpunkt</p>
+                <p className="text-sm text-slate-600 mb-1">Ersatzteile</p>
                 <p className="font-medium text-slate-800">
-                  {safeZones.find(sz => sz.id === selectedSafeZone)?.name}
+                  {partsResponsibility === 'none' && 'Keine Ersatzteile nötig'}
+                  {partsResponsibility === 'fixer' && 'Fixer besorgt Ersatzteile'}
+                  {partsResponsibility === 'customer' && 'Ich besorge Ersatzteile selbst'}
                 </p>
+                {partsNotes && (
+                  <p className="text-sm text-slate-600 mt-2">{partsNotes}</p>
+                )}
               </div>
 
               <div className="bg-slate-50 rounded-xl p-4">
@@ -541,18 +587,33 @@ export const NewBooking: React.FC = () => {
                 {deliveryMethod === 'shipping' && shippingAddress && (
                   <p className="text-sm text-slate-600 mt-2 whitespace-pre-line">{shippingAddress}</p>
                 )}
-                {deliveryMethod === 'meetup' && appointmentDate && (
-                  <p className="text-sm text-slate-600 mt-2">
-                    Wunschtermin: {new Date(appointmentDate).toLocaleString('de-DE', {
-                      day: '2-digit',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                )}
               </div>
+
+              {deliveryMethod === 'meetup' && (
+                <>
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <p className="text-sm text-slate-600 mb-1">Treffpunkt</p>
+                    <p className="font-medium text-slate-800">
+                      {safeZones.find(sz => sz.id === selectedSafeZone)?.name}
+                    </p>
+                  </div>
+
+                  {appointmentDate && (
+                    <div className="bg-slate-50 rounded-xl p-4">
+                      <p className="text-sm text-slate-600 mb-1">Wunschtermin</p>
+                      <p className="font-medium text-slate-800">
+                        {new Date(appointmentDate).toLocaleString('de-DE', {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
 
               <div className="bg-primary-50 border-2 border-primary-600 rounded-xl p-4">
                 <p className="text-sm text-slate-600 mb-1">Geschätzter Preis</p>

@@ -17,13 +17,13 @@ export const FixerDashboard: React.FC = () => {
   const { user } = useAuthStore();
   const { orders, acceptOrder, updateOrder, getOrdersByFixerId } = useOrderStore();
 
-  // Get pending orders (not yet accepted)
-  const availableOrders = orders.filter(o => o.status === 'pending');
+  // Get pending orders (not yet accepted - no fixer assigned)
+  const availableOrders = orders.filter(o => o.status === 'pending' && !o.fixerId);
 
   // Get fixer's own orders
   const myFixerOrders = user ? getOrdersByFixerId(user.id) : [];
   const myActiveOrders = myFixerOrders.filter(o =>
-    ['accepted', 'en_route', 'arrived', 'in_progress'].includes(o.status)
+    ['pending', 'negotiating', 'ready', 'en_route', 'arrived', 'in_progress'].includes(o.status)
   );
   const myCompletedOrders = myFixerOrders.filter(o => o.status === 'completed');
 
@@ -43,8 +43,7 @@ export const FixerDashboard: React.FC = () => {
   const handleAcceptOrder = (orderId: string) => {
     if (user) {
       acceptOrder(orderId, user.id);
-      setToastMessage('Auftrag erfolgreich angenommen!');
-      setShowToast(true);
+      navigate(`/orders/${orderId}`);
     }
   };
 
@@ -60,10 +59,12 @@ export const FixerDashboard: React.FC = () => {
     setShowToast(true);
   };
 
-  const getStatusBadge = (status: OrderStatus) => {
-    const variants: Record<OrderStatus, 'success' | 'warning' | 'default' | 'error'> = {
+  const getStatusBadge = (status: OrderStatus, order?: any) => {
+    const variants: Record<OrderStatus, 'success' | 'warning' | 'default' | 'error' | 'info'> = {
       pending: 'warning',
       accepted: 'default',
+      negotiating: 'info',
+      ready: 'success',
       en_route: 'default',
       arrived: 'default',
       in_progress: 'warning',
@@ -75,6 +76,8 @@ export const FixerDashboard: React.FC = () => {
     const labels: Record<OrderStatus, string> = {
       pending: 'Ausstehend',
       accepted: 'Angenommen',
+      negotiating: 'Verhandlung',
+      ready: 'Bereit',
       en_route: 'Unterwegs',
       arrived: 'Angekommen',
       in_progress: 'In Arbeit',
@@ -83,12 +86,17 @@ export const FixerDashboard: React.FC = () => {
       escalated: 'Eskaliert',
     };
 
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>;
+    let label = labels[status];
+    if (status === 'pending' && order?.fixerId) {
+      label = 'In Verhandlung';
+    }
+
+    return <Badge variant={variants[status] as 'success' | 'warning' | 'default' | 'error'}>{label}</Badge>;
   };
 
   const getNextStatusAction = (currentStatus: OrderStatus) => {
     const actions: Record<string, { status: OrderStatus; label: string; icon: React.ReactNode }> = {
-      accepted: { status: 'en_route', label: 'Auf dem Weg', icon: <Navigation className="w-4 h-4" /> },
+      ready: { status: 'en_route', label: 'Auf dem Weg', icon: <Navigation className="w-4 h-4" /> },
       en_route: { status: 'arrived', label: 'Angekommen', icon: <MapPinCheck className="w-4 h-4" /> },
       arrived: { status: 'in_progress', label: 'Reparatur starten', icon: <Wrench className="w-4 h-4" /> },
       in_progress: { status: 'completed', label: 'Abschließen', icon: <CheckCircle className="w-4 h-4" /> },
@@ -209,7 +217,7 @@ export const FixerDashboard: React.FC = () => {
                         <h3 className="text-xl font-semibold text-slate-800">
                           {order.issueType}
                         </h3>
-                        {getStatusBadge(order.status)}
+                        {getStatusBadge(order.status, order)}
                       </div>
 
                       <p className="text-slate-700 mb-2">

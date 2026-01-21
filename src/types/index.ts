@@ -26,6 +26,8 @@ export interface RepairOrder {
   deliveryMethod: 'meetup' | 'shipping';
   appointmentDate?: string;
   shippingAddress?: string;
+  partsResponsibility?: 'fixer' | 'customer' | 'none';
+  partsNotes?: string;
   priceEstimate: { min: number; max: number };
   finalPrice?: number;
   status: OrderStatus;
@@ -34,11 +36,34 @@ export interface RepairOrder {
   completedAt?: string;
   rating?: number;
   review?: string;
+  negotiation?: {
+    // Formalities
+    partsResponsibility?: 'fixer' | 'customer' | 'shared';
+    partsNotes?: string;
+    formalitiesProposedBy?: string; // userId who last proposed
+    formalitiesConfirmedBy?: string[]; // userIds who confirmed
+
+    // Price
+    proposedPrice?: number;
+    priceProposedBy?: string; // userId who last proposed
+    priceConfirmedBy?: string[]; // userIds who confirmed
+
+    // Meetup
+    proposedLocation?: SafeZone;
+    proposedDate?: string;
+    meetupProposedBy?: string; // userId who last proposed
+    meetupConfirmedBy?: string[]; // userIds who confirmed
+
+    // Overall status
+    allConfirmed?: boolean;
+  };
 }
 
 export type OrderStatus =
   | 'pending'
   | 'accepted'
+  | 'negotiating'
+  | 'ready'
   | 'en_route'
   | 'arrived'
   | 'in_progress'

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Clock, CheckCircle, Star, MessageCircle, XCircle, Navigation, MapPinCheck, Wrench } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, CheckCircle, Star, MessageCircle, XCircle, Navigation, MapPinCheck, Wrench, FileText, Euro, Calendar } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -11,6 +11,7 @@ import { useMessageStore } from '../stores/useMessageStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { mockUsers } from '../data/mockUsers';
 import type { OrderStatus } from '../types';
+import { OrderNegotiation } from '../components/OrderNegotiation';
 
 const statusConfig: Record<OrderStatus, { label: string; description: string; icon: React.ReactNode; variant: 'success' | 'warning' | 'error' | 'info'; color: string }> = {
   pending: {
@@ -26,6 +27,20 @@ const statusConfig: Record<OrderStatus, { label: string; description: string; ic
     icon: <CheckCircle className="w-5 h-5 text-white" />,
     variant: 'info',
     color: 'bg-blue-500'
+  },
+  negotiating: {
+    label: 'Verhandlung',
+    description: 'Fixer und Kunde verhandeln Details der Reparatur',
+    icon: <FileText className="w-5 h-5 text-white" />,
+    variant: 'info',
+    color: 'bg-blue-500'
+  },
+  ready: {
+    label: 'Bereit',
+    description: 'Alle Details geklärt - bereit für die Reparatur',
+    icon: <CheckCircle className="w-5 h-5 text-white" />,
+    variant: 'success',
+    color: 'bg-green-500'
   },
   en_route: {
     label: 'Unterwegs',
@@ -85,6 +100,7 @@ export const OrderDetail: React.FC = () => {
   const [toastMessage, setToastMessage] = useState('');
 
   const order = id ? getOrderById(id) : undefined;
+  const isFixer = user?.id === order?.fixerId;
 
   if (!order) {
     return (
@@ -119,6 +135,28 @@ export const OrderDetail: React.FC = () => {
       setToastMessage('Bewertung wurde gespeichert!');
       setShowToast(true);
     }
+  };
+
+  const handleUpdateStatus = (newStatus: OrderStatus) => {
+    updateOrder(order.id, { status: newStatus });
+    const statusMessages: Record<string, string> = {
+      en_route: 'Status aktualisiert: Auf dem Weg',
+      arrived: 'Status aktualisiert: Angekommen',
+      in_progress: 'Status aktualisiert: Reparatur läuft',
+      completed: 'Auftrag als abgeschlossen markiert!',
+    };
+    setToastMessage(statusMessages[newStatus] || 'Status aktualisiert');
+    setShowToast(true);
+  };
+
+  const getNextStatusAction = (currentStatus: OrderStatus) => {
+    const actions: Record<string, { status: OrderStatus; label: string; icon: React.ReactNode }> = {
+      ready: { status: 'en_route', label: 'Auf dem Weg', icon: <Navigation className="w-4 h-4" /> },
+      en_route: { status: 'arrived', label: 'Angekommen', icon: <MapPinCheck className="w-4 h-4" /> },
+      arrived: { status: 'in_progress', label: 'Reparatur starten', icon: <Wrench className="w-4 h-4" /> },
+      in_progress: { status: 'completed', label: 'Abschließen', icon: <CheckCircle className="w-4 h-4" /> },
+    };
+    return actions[currentStatus];
   };
 
   const getTimestampForStatus = (status: OrderStatus): string | null => {
@@ -177,6 +215,38 @@ export const OrderDetail: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Details & Timeline */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Negotiation Section - Show when fixer is assigned and negotiation active */}
+          {(order.fixerId && order.negotiation && !order.negotiation.allConfirmed) && (
+            <OrderNegotiation order={order} onComplete={() => {
+              setToastMessage('Alle Details geklärt - Bereit für die Reparatur!');
+              setShowToast(true);
+            }} />
+          )}
+
+          {/* Show completion message when ready */}
+          {order.status === 'ready' && order.negotiation?.allConfirmed && (
+            <OrderNegotiation order={order} onComplete={() => {}} />
+          )}
+
+          {/* Fixer Status Actions */}
+          {isFixer && order.status !== 'completed' && order.status !== 'cancelled' && getNextStatusAction(order.status) && (
+            <Card className="border-2 border-primary-200 bg-primary-50/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-1">Nächster Schritt</h3>
+                  <p className="text-sm text-slate-600">Aktualisiere den Auftragsstatus</p>
+                </div>
+                <Button
+                  size="lg"
+                  onClick={() => handleUpdateStatus(getNextStatusAction(order.status)!.status)}
+                >
+                  {getNextStatusAction(order.status)!.icon}
+                  <span className="ml-2">{getNextStatusAction(order.status)!.label}</span>
+                </Button>
+              </div>
+            </Card>
+          )}
+
           {/* Order Details */}
           <Card>
             <h2 className="text-xl font-bold text-slate-800 mb-4">Auftragsdetails</h2>

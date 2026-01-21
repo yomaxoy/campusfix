@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '../types';
 
 interface AuthState {
@@ -23,6 +23,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'campusfix-auth',
+      storage: createJSONStorage(() => sessionStorage), // Use sessionStorage for per-tab auth
     }
   )
 );

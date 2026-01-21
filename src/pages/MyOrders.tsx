@@ -7,9 +7,16 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { useOrderStore } from '../stores/useOrderStore';
 import type { OrderStatus } from '../types';
 
-const statusConfig: Record<OrderStatus, { label: string; variant: 'success' | 'warning' | 'error' | 'info' | 'default'; icon: any }> = {
-  pending: { label: 'Sucht Fixer', variant: 'warning', icon: Clock },
+const statusConfig: Record<OrderStatus, { label: string; variant: 'success' | 'warning' | 'error' | 'info' | 'default'; icon: any; getLabel?: (order: any) => string }> = {
+  pending: {
+    label: 'Sucht Fixer',
+    variant: 'warning',
+    icon: Clock,
+    getLabel: (order) => order.fixerId ? 'In Verhandlung' : 'Sucht Fixer'
+  },
   accepted: { label: 'Akzeptiert', variant: 'info', icon: CheckCircle },
+  negotiating: { label: 'Verhandlung', variant: 'info', icon: Clock },
+  ready: { label: 'Bereit', variant: 'success', icon: CheckCircle },
   en_route: { label: 'Unterwegs', variant: 'info', icon: Clock },
   arrived: { label: 'Angekommen', variant: 'info', icon: CheckCircle },
   in_progress: { label: 'In Bearbeitung', variant: 'warning', icon: Clock },
@@ -27,7 +34,7 @@ export const MyOrders: React.FC = () => {
   const myOrders = user ? getOrdersByCustomerId(user.id) : [];
 
   const activeOrders = myOrders.filter(o =>
-    ['pending', 'accepted', 'en_route', 'arrived', 'in_progress'].includes(o.status)
+    ['pending', 'negotiating', 'ready', 'en_route', 'arrived', 'in_progress'].includes(o.status)
   );
 
   const completedOrders = myOrders.filter(o => o.status === 'completed');
@@ -141,7 +148,7 @@ export const MyOrders: React.FC = () => {
                       </h3>
                       <Badge variant={statusInfo.variant}>
                         <StatusIcon className="w-3 h-3 mr-1" />
-                        {statusInfo.label}
+                        {statusInfo.getLabel ? statusInfo.getLabel(order) : statusInfo.label}
                       </Badge>
                     </div>
 
