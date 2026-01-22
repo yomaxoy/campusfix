@@ -15,6 +15,8 @@ export const useOrderStatusSimulation = () => {
     const statusProgression: Record<OrderStatus, { next: OrderStatus; delay: number } | null> = {
       pending: null, // Stays until manually accepted
       accepted: { next: 'en_route', delay: 15000 }, // 15 seconds
+      negotiating: null, // Stays until all confirmed
+      ready: { next: 'en_route', delay: 5000 }, // 5 seconds
       en_route: { next: 'arrived', delay: 20000 }, // 20 seconds
       arrived: { next: 'in_progress', delay: 10000 }, // 10 seconds
       in_progress: { next: 'completed', delay: 30000 }, // 30 seconds

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from './ui/Button';
 import { useOrderStore } from '../stores/useOrderStore';
 import { useMessageStore } from '../stores/useMessageStore';
 import { useNotificationStore } from '../stores/useNotificationStore';
@@ -27,7 +27,7 @@ export function SyncButton() {
 
   return (
     <Button
-      variant="ghost"
+      variant="secondary"
       size="sm"
       onClick={handleSync}
       className="gap-2"
