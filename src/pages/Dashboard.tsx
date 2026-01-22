@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/Badge';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useOrderStore } from '../stores/useOrderStore';
 import { categories } from '../data/categories';
+import { getIssueTypeLabel } from '../utils/issueTypeFormatter';
 
 const iconMap = {
   Smartphone,
@@ -116,7 +117,7 @@ export const Dashboard: React.FC = () => {
               <Card key={order.id} hover onClick={() => navigate(`/orders/${order.id}`)}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-slate-800">{order.issueType}</p>
+                    <p className="font-medium text-slate-800">{getIssueTypeLabel(order.issueType, order.category, order.subcategory)}</p>
                     <p className="text-sm text-slate-600">
                       {order.deviceBrand} {order.deviceModel} • {order.finalPrice}€
                     </p>

@@ -8,6 +8,7 @@ import { Toast } from '../components/ui/Toast';
 import { useOrderStore } from '../stores/useOrderStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import type { OrderStatus } from '../types';
+import { getIssueTypeLabel } from '../utils/issueTypeFormatter';
 
 export const FixerDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -215,7 +216,7 @@ export const FixerDashboard: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
                         <h3 className="text-xl font-semibold text-slate-800">
-                          {order.issueType}
+                          {getIssueTypeLabel(order.issueType, order.category, order.subcategory)}
                         </h3>
                         {getStatusBadge(order.status, order)}
                       </div>
@@ -312,7 +313,7 @@ export const FixerDashboard: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-xl font-semibold text-slate-800">
-                        {order.issueType}
+                        {getIssueTypeLabel(order.issueType, order.category, order.subcategory)}
                       </h3>
                       <Badge variant="warning">Neu</Badge>
                     </div>

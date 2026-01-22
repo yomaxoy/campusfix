@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useOrderStore } from '../stores/useOrderStore';
 import type { OrderStatus } from '../types';
+import { getIssueTypeLabel } from '../utils/issueTypeFormatter';
 
 const statusConfig: Record<OrderStatus, { label: string; variant: 'success' | 'warning' | 'error' | 'info' | 'default'; icon: any; getLabel?: (order: any) => string }> = {
   pending: {
@@ -144,7 +145,7 @@ export const MyOrders: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-semibold text-slate-800">
-                        {order.issueType}
+                        {getIssueTypeLabel(order.issueType, order.category, order.subcategory)}
                       </h3>
                       <Badge variant={statusInfo.variant}>
                         <StatusIcon className="w-3 h-3 mr-1" />

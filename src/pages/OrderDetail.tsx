@@ -12,6 +12,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { mockUsers } from '../data/mockUsers';
 import type { OrderStatus } from '../types';
 import { OrderNegotiation } from '../components/OrderNegotiation';
+import { getIssueTypeLabel } from '../utils/issueTypeFormatter';
 
 const statusConfig: Record<OrderStatus, { label: string; description: string; icon: React.ReactNode; variant: 'success' | 'warning' | 'error' | 'info'; color: string }> = {
   pending: {
@@ -92,14 +93,17 @@ export const OrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { getOrderById, updateOrder } = useOrderStore();
+  const { updateOrder } = useOrderStore();
   const { getUnreadCount } = useMessageStore();
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  const order = id ? getOrderById(id) : undefined;
+  // Reaktiv auf Änderungen im Store reagieren
+  const order = useOrderStore((state) =>
+    state.orders.find((o) => o.id === id)
+  );
   const isFixer = user?.id === order?.fixerId;
 
   if (!order) {
@@ -201,7 +205,7 @@ export const OrderDetail: React.FC = () => {
         </Button>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800">{order.issueType}</h1>
+            <h1 className="text-3xl font-bold text-slate-800">{getIssueTypeLabel(order.issueType, order.category, order.subcategory)}</h1>
             <p className="text-slate-600 mt-1">
               Auftrag #{order.id} • Erstellt am {formatDate(order.createdAt)}
             </p>

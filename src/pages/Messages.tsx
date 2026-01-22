@@ -8,6 +8,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { useOrderStore } from '../stores/useOrderStore';
 import { useMessageStore } from '../stores/useMessageStore';
 import { mockUsers } from '../data/mockUsers';
+import { getIssueTypeLabel } from '../utils/issueTypeFormatter';
 
 export const Messages: React.FC = () => {
   const { user } = useAuthStore();
@@ -152,7 +153,7 @@ export const Messages: React.FC = () => {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-slate-600 truncate">{order.issueType}</p>
+                        <p className="text-sm text-slate-600 truncate">{getIssueTypeLabel(order.issueType, order.category, order.subcategory)}</p>
                         {lastMsg && (
                           <p className="text-xs text-slate-500 mt-1">
                             Zuletzt: {formatTimestamp(lastMsg.timestamp)}
