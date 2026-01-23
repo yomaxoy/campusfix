@@ -12,6 +12,8 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { mockUsers } from '../data/mockUsers';
 import type { OrderStatus } from '../types';
 import { OrderNegotiation } from '../components/OrderNegotiation';
+import { PaymentCheckout } from '../components/PaymentCheckout';
+import { PaymentRelease } from '../components/PaymentRelease';
 import { getIssueTypeLabel } from '../utils/issueTypeFormatter';
 
 const statusConfig: Record<OrderStatus, { label: string; description: string; icon: React.ReactNode; variant: 'success' | 'warning' | 'error' | 'info'; color: string }> = {
@@ -39,6 +41,27 @@ const statusConfig: Record<OrderStatus, { label: string; description: string; ic
   ready: {
     label: 'Bereit',
     description: 'Alle Details geklärt - bereit für die Reparatur',
+    icon: <CheckCircle className="w-5 h-5 text-white" />,
+    variant: 'success',
+    color: 'bg-green-500'
+  },
+  awaiting_payment: {
+    label: 'Zahlung ausstehend',
+    description: 'Warte auf Zahlung vom Kunden',
+    icon: <Clock className="w-5 h-5 text-white" />,
+    variant: 'warning',
+    color: 'bg-yellow-500'
+  },
+  payment_failed: {
+    label: 'Zahlung fehlgeschlagen',
+    description: 'Die Zahlung konnte nicht verarbeitet werden',
+    icon: <XCircle className="w-5 h-5 text-white" />,
+    variant: 'error',
+    color: 'bg-red-500'
+  },
+  ready_paid: {
+    label: 'Bezahlt',
+    description: 'Zahlung erfolgreich - Fixer kann starten',
     icon: <CheckCircle className="w-5 h-5 text-white" />,
     variant: 'success',
     color: 'bg-green-500'
@@ -71,6 +94,20 @@ const statusConfig: Record<OrderStatus, { label: string; description: string; ic
     variant: 'success',
     color: 'bg-green-500'
   },
+  awaiting_release: {
+    label: 'Warte auf Freigabe',
+    description: 'Warte auf Bestätigung zur Zahlungsfreigabe',
+    icon: <Clock className="w-5 h-5 text-white" />,
+    variant: 'warning',
+    color: 'bg-yellow-500'
+  },
+  paid_completed: {
+    label: 'Bezahlt & Abgeschlossen',
+    description: 'Zahlung wurde an Fixer freigegeben',
+    icon: <CheckCircle className="w-5 h-5 text-white" />,
+    variant: 'success',
+    color: 'bg-green-500'
+  },
   cancelled: {
     label: 'Storniert',
     description: 'Der Auftrag wurde storniert',
@@ -87,7 +124,7 @@ const statusConfig: Record<OrderStatus, { label: string; description: string; ic
   },
 };
 
-const statusSteps: OrderStatus[] = ['pending', 'accepted', 'en_route', 'arrived', 'in_progress', 'completed'];
+const statusSteps: OrderStatus[] = ['pending', 'accepted', 'awaiting_payment', 'ready_paid', 'en_route', 'arrived', 'in_progress', 'completed'];
 
 export const OrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -155,10 +192,10 @@ export const OrderDetail: React.FC = () => {
 
   const getNextStatusAction = (currentStatus: OrderStatus) => {
     const actions: Record<string, { status: OrderStatus; label: string; icon: React.ReactNode }> = {
-      ready: { status: 'en_route', label: 'Auf dem Weg', icon: <Navigation className="w-4 h-4" /> },
+      ready_paid: { status: 'en_route', label: 'Auf dem Weg', icon: <Navigation className="w-4 h-4" /> },
       en_route: { status: 'arrived', label: 'Angekommen', icon: <MapPinCheck className="w-4 h-4" /> },
       arrived: { status: 'in_progress', label: 'Reparatur starten', icon: <Wrench className="w-4 h-4" /> },
-      in_progress: { status: 'completed', label: 'Abschließen', icon: <CheckCircle className="w-4 h-4" /> },
+      in_progress: { status: 'awaiting_release', label: 'Abschließen', icon: <CheckCircle className="w-4 h-4" /> },
     };
     return actions[currentStatus];
   };
@@ -228,12 +265,67 @@ export const OrderDetail: React.FC = () => {
           )}
 
           {/* Show completion message when ready */}
-          {order.status === 'ready' && order.negotiation?.allConfirmed && (
+          {(order.status === 'ready_paid' || order.status === 'awaiting_payment') && order.negotiation?.allConfirmed && (
             <OrderNegotiation order={order} onComplete={() => {}} />
           )}
 
+          {/* Payment Section - only for customer when awaiting payment */}
+          {!isFixer && order.status === 'awaiting_payment' && (
+            <PaymentCheckout
+              order={order}
+              onPaymentSuccess={() => {
+                const basePrice = order.finalPrice || order.priceEstimate.max;
+                const campusFixCommission = Math.round(basePrice * 0.10 * 100) / 100;
+                const transactionFee = Math.round(basePrice * 0.02 * 100) / 100;
+                const totalAmount = Math.round((basePrice + campusFixCommission + transactionFee) * 100) / 100;
+
+                updateOrder(order.id, {
+                  status: 'ready_paid',
+                  paymentStatus: 'escrowed',
+                  paymentTimestamp: new Date().toISOString(),
+                  escrowedAmount: basePrice, // Amount held in escrow for fixer
+                  customerPrice: totalAmount,
+                  campusFixCommission,
+                  transactionFee,
+                });
+                setToastMessage('Zahlung erfolgreich! Der Fixer kann nun loslegen.');
+                setShowToast(true);
+
+                // Notify fixer about payment
+                import('../stores/useNotificationStore').then(({ useNotificationStore }) => {
+                  const { addNotification } = useNotificationStore.getState();
+                  if (order.fixerId) {
+                    addNotification({
+                      userId: order.fixerId,
+                      type: 'payment_received',
+                      title: 'Zahlung erhalten',
+                      message: `Der Kunde hat bezahlt (${basePrice}€ für dich). Du kannst nun mit der Reparatur beginnen!`,
+                      orderId: order.id,
+                      read: false,
+                    });
+                  }
+                });
+              }}
+            />
+          )}
+
+          {/* Payment Waiting Message for Fixer */}
+          {isFixer && order.status === 'awaiting_payment' && (
+            <Card className="border-2 border-yellow-200 bg-yellow-50">
+              <div className="flex items-start gap-3">
+                <Clock className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-lg font-bold text-yellow-800 mb-1">Warte auf Zahlung</h3>
+                  <p className="text-sm text-yellow-700">
+                    Der Kunde muss noch {order.finalPrice}€ bezahlen, bevor die Reparatur beginnen kann.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Fixer Status Actions */}
-          {isFixer && order.status !== 'completed' && order.status !== 'cancelled' && getNextStatusAction(order.status) && (
+          {isFixer && order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'awaiting_payment' && getNextStatusAction(order.status) && (
             <Card className="border-2 border-primary-200 bg-primary-50/30">
               <div className="flex items-center justify-between">
                 <div>
@@ -272,10 +364,25 @@ export const OrderDetail: React.FC = () => {
                 </div>
               )}
               <div className="flex justify-between py-2 border-b border-slate-100">
-                <span className="text-slate-600">Preis</span>
-                <span className="font-semibold text-primary-600 text-lg">
-                  {order.finalPrice ? `${order.finalPrice}€` : `${order.priceEstimate.min}-${order.priceEstimate.max}€`}
+                <span className="text-slate-600">
+                  {isFixer ? 'Dein Verdienst' : order.customerPrice ? 'Gesamt' : 'Preis'}
                 </span>
+                <div className="text-right">
+                  <span className="font-semibold text-primary-600 text-lg">
+                    {isFixer
+                      ? order.finalPrice ? `${order.finalPrice}€` : `${order.priceEstimate.min}-${order.priceEstimate.max}€`
+                      : order.customerPrice
+                        ? `${order.customerPrice.toFixed(2)}€`
+                        : order.finalPrice
+                          ? `${order.finalPrice}€`
+                          : `${order.priceEstimate.min}-${order.priceEstimate.max}€`}
+                  </span>
+                  {!isFixer && order.customerPrice && order.finalPrice && (
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      (Reparatur: {order.finalPrice}€ + Gebühren: {(order.customerPrice - order.finalPrice).toFixed(2)}€)
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-slate-600">Übergabe</span>
@@ -314,6 +421,81 @@ export const OrderDetail: React.FC = () => {
               </div>
             )}
           </Card>
+
+          {/* Payment Release Section - Customer confirms and releases payment */}
+          {!isFixer && order.status === 'awaiting_release' && order.paymentStatus === 'escrowed' && (
+            <PaymentRelease
+              order={order}
+              onRelease={() => {
+                updateOrder(order.id, {
+                  status: 'paid_completed',
+                  paymentStatus: 'released',
+                  paymentReleaseTimestamp: new Date().toISOString(),
+                });
+                setToastMessage('Zahlung wurde an den Fixer freigegeben!');
+                setShowToast(true);
+
+                // Notify fixer about payment release
+                import('../stores/useNotificationStore').then(({ useNotificationStore }) => {
+                  const { addNotification } = useNotificationStore.getState();
+                  if (order.fixerId) {
+                    addNotification({
+                      userId: order.fixerId,
+                      type: 'payment_released',
+                      title: 'Zahlung erhalten!',
+                      message: `Der Kunde hat die Zahlung freigegeben. ${order.escrowedAmount || order.finalPrice}€ wurden dir gutgeschrieben!`,
+                      orderId: order.id,
+                      read: false,
+                    });
+                  }
+                });
+              }}
+              onDispute={() => {
+                updateOrder(order.id, { status: 'escalated' });
+                setToastMessage('Problem gemeldet - Support wurde informiert');
+                setShowToast(true);
+              }}
+            />
+          )}
+
+          {/* Waiting for Release - Fixer View */}
+          {isFixer && order.status === 'awaiting_release' && (
+            <Card className="border-2 border-yellow-200 bg-yellow-50">
+              <div className="flex items-start gap-3">
+                <Clock className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-lg font-bold text-yellow-800 mb-1">Warte auf Zahlungsfreigabe</h3>
+                  <p className="text-sm text-yellow-700">
+                    Der Kunde prüft die Reparatur. Sobald er zufrieden ist, wird die Zahlung von {order.escrowedAmount || order.finalPrice}€ freigegeben.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Payment Completed Message */}
+          {order.status === 'paid_completed' && order.paymentStatus === 'released' && (
+            <Card className="border-2 border-green-200 bg-green-50">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-lg font-bold text-green-800 mb-1">
+                    {isFixer ? 'Zahlung erhalten!' : 'Zahlung freigegeben'}
+                  </h3>
+                  <p className="text-sm text-green-700">
+                    {isFixer
+                      ? `Die Zahlung von ${order.escrowedAmount || order.finalPrice}€ wurde dir gutgeschrieben.`
+                      : `Die Zahlung von ${order.escrowedAmount || order.finalPrice}€ wurde an den Fixer freigegeben.`}
+                  </p>
+                  {order.paymentReleaseTimestamp && (
+                    <p className="text-xs text-green-600 mt-2">
+                      Freigegeben am {formatDate(order.paymentReleaseTimestamp)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Status Timeline */}
           <Card>
@@ -387,7 +569,7 @@ export const OrderDetail: React.FC = () => {
           </Card>
 
           {/* Review Section (if completed and not rated yet) */}
-          {order.status === 'completed' && !order.rating && (
+          {(order.status === 'paid_completed' || order.status === 'completed') && !order.rating && !isFixer && (
             <Card>
               <h2 className="text-xl font-bold text-slate-800 mb-4">Bewertung abgeben</h2>
               <div className="space-y-4">

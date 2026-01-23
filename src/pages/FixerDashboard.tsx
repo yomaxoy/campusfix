@@ -24,9 +24,9 @@ export const FixerDashboard: React.FC = () => {
   // Get fixer's own orders
   const myFixerOrders = user ? getOrdersByFixerId(user.id) : [];
   const myActiveOrders = myFixerOrders.filter(o =>
-    ['pending', 'negotiating', 'ready', 'en_route', 'arrived', 'in_progress'].includes(o.status)
+    ['pending', 'negotiating', 'ready', 'awaiting_payment', 'ready_paid', 'en_route', 'arrived', 'in_progress', 'awaiting_release', 'completed'].includes(o.status)
   );
-  const myCompletedOrders = myFixerOrders.filter(o => o.status === 'completed');
+  const myCompletedOrders = myFixerOrders.filter(o => ['paid_completed'].includes(o.status));
 
   // Calculate real statistics for Fixer
   const totalEarnings = myCompletedOrders.reduce((sum, order) => sum + (order.finalPrice || 0), 0);
@@ -66,10 +66,15 @@ export const FixerDashboard: React.FC = () => {
       accepted: 'default',
       negotiating: 'info',
       ready: 'success',
+      awaiting_payment: 'warning',
+      payment_failed: 'error',
+      ready_paid: 'success',
       en_route: 'default',
       arrived: 'default',
       in_progress: 'warning',
       completed: 'success',
+      awaiting_release: 'warning',
+      paid_completed: 'success',
       cancelled: 'error',
       escalated: 'error',
     };
@@ -79,10 +84,15 @@ export const FixerDashboard: React.FC = () => {
       accepted: 'Angenommen',
       negotiating: 'Verhandlung',
       ready: 'Bereit',
+      awaiting_payment: 'Warte auf Zahlung',
+      payment_failed: 'Zahlung fehlgeschlagen',
+      ready_paid: 'Bezahlt',
       en_route: 'Unterwegs',
       arrived: 'Angekommen',
       in_progress: 'In Arbeit',
       completed: 'Abgeschlossen',
+      awaiting_release: 'Warte auf Freigabe',
+      paid_completed: 'Bezahlt',
       cancelled: 'Storniert',
       escalated: 'Eskaliert',
     };
@@ -97,10 +107,10 @@ export const FixerDashboard: React.FC = () => {
 
   const getNextStatusAction = (currentStatus: OrderStatus) => {
     const actions: Record<string, { status: OrderStatus; label: string; icon: React.ReactNode }> = {
-      ready: { status: 'en_route', label: 'Auf dem Weg', icon: <Navigation className="w-4 h-4" /> },
+      ready_paid: { status: 'en_route', label: 'Auf dem Weg', icon: <Navigation className="w-4 h-4" /> },
       en_route: { status: 'arrived', label: 'Angekommen', icon: <MapPinCheck className="w-4 h-4" /> },
       arrived: { status: 'in_progress', label: 'Reparatur starten', icon: <Wrench className="w-4 h-4" /> },
-      in_progress: { status: 'completed', label: 'Abschließen', icon: <CheckCircle className="w-4 h-4" /> },
+      in_progress: { status: 'awaiting_release', label: 'Abschließen', icon: <CheckCircle className="w-4 h-4" /> },
     };
     return actions[currentStatus];
   };

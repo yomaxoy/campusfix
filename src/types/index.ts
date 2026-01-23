@@ -29,7 +29,10 @@ export interface RepairOrder {
   partsResponsibility?: 'fixer' | 'customer' | 'none';
   partsNotes?: string;
   priceEstimate: { min: number; max: number };
-  finalPrice?: number;
+  finalPrice?: number; // Price agreed with fixer (what fixer receives)
+  customerPrice?: number; // Total price customer pays (finalPrice + fees)
+  campusFixCommission?: number; // 10% commission
+  transactionFee?: number; // 2% transaction fee
   status: OrderStatus;
   createdAt: string;
   updatedAt: string;
@@ -38,7 +41,7 @@ export interface RepairOrder {
   review?: string;
   negotiation?: {
     // Formalities
-    partsResponsibility?: 'fixer' | 'customer' | 'shared';
+    partsResponsibility?: 'fixer' | 'customer' | 'none';
     partsNotes?: string;
     formalitiesProposedBy?: string; // userId who last proposed
     formalitiesConfirmedBy?: string[]; // userIds who confirmed
@@ -57,6 +60,17 @@ export interface RepairOrder {
     // Overall status
     allConfirmed?: boolean;
   };
+  // Payment
+  paymentStatus?: 'pending' | 'escrowed' | 'released' | 'refunded';
+  paymentMethod?: 'card' | 'paypal' | 'bank_transfer';
+  paymentDetails?: {
+    cardLastFour?: string;
+    paypalEmail?: string;
+    bankAccount?: string;
+  };
+  escrowedAmount?: number;
+  paymentTimestamp?: string;
+  paymentReleaseTimestamp?: string;
 }
 
 export type OrderStatus =
@@ -64,10 +78,15 @@ export type OrderStatus =
   | 'accepted'
   | 'negotiating'
   | 'ready'
+  | 'awaiting_payment'
+  | 'payment_failed'
+  | 'ready_paid'
   | 'en_route'
   | 'arrived'
   | 'in_progress'
   | 'completed'
+  | 'awaiting_release'
+  | 'paid_completed'
   | 'cancelled'
   | 'escalated';
 
@@ -112,7 +131,7 @@ export interface Message {
 export interface Notification {
   id: string;
   userId: string;
-  type: 'order_accepted' | 'order_status_changed' | 'new_message' | 'order_completed' | 'order_cancelled' | 'fixer_arrived' | 'fixer_en_route';
+  type: 'order_accepted' | 'order_status_changed' | 'new_message' | 'order_completed' | 'order_cancelled' | 'fixer_arrived' | 'fixer_en_route' | 'payment_required' | 'payment_received' | 'payment_released';
   title: string;
   message: string;
   orderId?: string;

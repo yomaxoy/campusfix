@@ -4,7 +4,9 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nAdd CampusFix logo to platform\n\n- Replace placeholder \"CF\" text with actual CampusFix logo in header\n- Update login page to display full logo instead of placeholder\n- Add logo image file to public directory\n- Logo displays at appropriate sizes (h-10 in header, h-32 on login page)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

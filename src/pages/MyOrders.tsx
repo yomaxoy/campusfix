@@ -18,10 +18,15 @@ const statusConfig: Record<OrderStatus, { label: string; variant: 'success' | 'w
   accepted: { label: 'Akzeptiert', variant: 'info', icon: CheckCircle },
   negotiating: { label: 'Verhandlung', variant: 'info', icon: Clock },
   ready: { label: 'Bereit', variant: 'success', icon: CheckCircle },
+  awaiting_payment: { label: 'Zahlung ausstehend', variant: 'warning', icon: Clock },
+  payment_failed: { label: 'Zahlung fehlgeschlagen', variant: 'error', icon: XCircle },
+  ready_paid: { label: 'Bezahlt', variant: 'success', icon: CheckCircle },
   en_route: { label: 'Unterwegs', variant: 'info', icon: Clock },
   arrived: { label: 'Angekommen', variant: 'info', icon: CheckCircle },
   in_progress: { label: 'In Bearbeitung', variant: 'warning', icon: Clock },
   completed: { label: 'Abgeschlossen', variant: 'success', icon: CheckCircle },
+  awaiting_release: { label: 'Warte auf Freigabe', variant: 'warning', icon: Clock },
+  paid_completed: { label: 'Bezahlt & Abgeschlossen', variant: 'success', icon: CheckCircle },
   cancelled: { label: 'Storniert', variant: 'error', icon: XCircle },
   escalated: { label: 'Eskaliert', variant: 'error', icon: AlertCircle },
 };
@@ -35,10 +40,10 @@ export const MyOrders: React.FC = () => {
   const myOrders = user ? getOrdersByCustomerId(user.id) : [];
 
   const activeOrders = myOrders.filter(o =>
-    ['pending', 'negotiating', 'ready', 'en_route', 'arrived', 'in_progress'].includes(o.status)
+    ['pending', 'negotiating', 'ready', 'awaiting_payment', 'payment_failed', 'ready_paid', 'en_route', 'arrived', 'in_progress', 'awaiting_release'].includes(o.status)
   );
 
-  const completedOrders = myOrders.filter(o => o.status === 'completed');
+  const completedOrders = myOrders.filter(o => ['completed', 'paid_completed'].includes(o.status));
   const cancelledOrders = myOrders.filter(o => ['cancelled', 'escalated'].includes(o.status));
 
   const getDisplayOrders = () => {
@@ -180,10 +185,14 @@ export const MyOrders: React.FC = () => {
 
                   <div className="text-right">
                     <p className="text-2xl font-bold text-primary-600">
-                      {order.finalPrice ? `${order.finalPrice}€` : `${order.priceEstimate.min}-${order.priceEstimate.max}€`}
+                      {order.customerPrice
+                        ? `${order.customerPrice.toFixed(2)}€`
+                        : order.finalPrice
+                          ? `${order.finalPrice}€`
+                          : `${order.priceEstimate.min}-${order.priceEstimate.max}€`}
                     </p>
                     <p className="text-sm text-slate-500 mt-1">
-                      {order.finalPrice ? 'Endpreis' : 'Schätzung'}
+                      {order.customerPrice ? 'Gesamt (inkl. Gebühren)' : order.finalPrice ? 'Vereinbarter Preis' : 'Schätzung'}
                     </p>
                   </div>
                 </div>

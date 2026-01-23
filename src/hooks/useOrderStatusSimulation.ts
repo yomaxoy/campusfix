@@ -14,13 +14,18 @@ export const useOrderStatusSimulation = () => {
     // Status progression mapping with time delays (in ms)
     const statusProgression: Record<OrderStatus, { next: OrderStatus; delay: number } | null> = {
       pending: null, // Stays until manually accepted
-      accepted: { next: 'en_route', delay: 15000 }, // 15 seconds
+      accepted: null, // Stays until negotiation
       negotiating: null, // Stays until all confirmed
-      ready: { next: 'en_route', delay: 5000 }, // 5 seconds
+      ready: null, // Stays until payment
+      awaiting_payment: null, // Stays until customer pays
+      payment_failed: null, // Terminal state
+      ready_paid: { next: 'en_route', delay: 5000 }, // 5 seconds
       en_route: { next: 'arrived', delay: 20000 }, // 20 seconds
       arrived: { next: 'in_progress', delay: 10000 }, // 10 seconds
-      in_progress: { next: 'completed', delay: 30000 }, // 30 seconds
+      in_progress: { next: 'awaiting_release', delay: 30000 }, // 30 seconds
       completed: null,
+      awaiting_release: null, // Stays until customer releases payment
+      paid_completed: null, // Terminal state
       cancelled: null,
       escalated: null,
     };

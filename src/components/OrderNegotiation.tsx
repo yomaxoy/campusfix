@@ -33,8 +33,8 @@ export const OrderNegotiation: React.FC<OrderNegotiationProps> = ({ order, onCom
   );
 
   // Local state for form inputs - initialize from proposal or order defaults
-  const [partsResponsibility, setPartsResponsibility] = useState<'fixer' | 'customer' | 'shared' | undefined>(
-    order.negotiation?.partsResponsibility || (order.partsResponsibility === 'none' ? undefined : order.partsResponsibility as 'fixer' | 'customer' | 'shared' | undefined)
+  const [partsResponsibility, setPartsResponsibility] = useState<'fixer' | 'customer' | 'none' | undefined>(
+    order.negotiation?.partsResponsibility || order.partsResponsibility
   );
   const [partsNotes, setPartsNotes] = useState(order.negotiation?.partsNotes || order.partsNotes || '');
   const [proposedPrice, setProposedPrice] = useState(
@@ -55,9 +55,9 @@ export const OrderNegotiation: React.FC<OrderNegotiationProps> = ({ order, onCom
 
   // Update allConfirmed status when ready
   useEffect(() => {
-    if (allFullyConfirmed && order.status !== 'ready') {
+    if (allFullyConfirmed && order.status !== 'awaiting_payment' && order.status !== 'ready_paid') {
       updateOrder(order.id, {
-        status: 'ready',
+        status: 'awaiting_payment',
         finalPrice: order.negotiation?.proposedPrice,
         location: order.negotiation?.proposedLocation || order.location,
         appointmentDate: order.negotiation?.proposedDate || order.appointmentDate,
@@ -131,21 +131,20 @@ export const OrderNegotiation: React.FC<OrderNegotiationProps> = ({ order, onCom
         ...order.negotiation,
         allConfirmed: true,
       },
-      status: 'ready',
+      status: 'awaiting_payment',
       finalPrice: order.negotiation.proposedPrice,
       location: order.negotiation.proposedLocation || order.location,
       appointmentDate: order.negotiation.proposedDate || order.appointmentDate,
     });
 
-    // Send notification to other party
+    // Send notification to customer for payment
     import('../stores/useNotificationStore').then(({ useNotificationStore }) => {
       const { addNotification } = useNotificationStore.getState();
-      const otherUserId = isFixer ? order.customerId : order.fixerId;
       addNotification({
-        userId: otherUserId || '',
-        type: 'order_status_changed',
-        title: 'Verhandlung abgeschlossen',
-        message: `${user.name} hat deinen Vorschlag akzeptiert. Die Reparatur kann beginnen!`,
+        userId: order.customerId,
+        type: 'payment_required',
+        title: 'Zahlung erforderlich',
+        message: `Die Verhandlung ist abgeschlossen. Bitte bezahle ${order.negotiation?.proposedPrice}€ um fortzufahren.`,
         orderId: order.id,
         read: false,
       });
@@ -161,7 +160,7 @@ export const OrderNegotiation: React.FC<OrderNegotiationProps> = ({ order, onCom
   };
 
   // Show completed state
-  if (order.status === 'ready' && allFullyConfirmed) {
+  if ((order.status === 'ready_paid' || order.status === 'awaiting_payment') && allFullyConfirmed) {
     return (
       <Card className="border-2 border-green-200 bg-green-50">
         <div className="flex items-start gap-3">
@@ -171,7 +170,9 @@ export const OrderNegotiation: React.FC<OrderNegotiationProps> = ({ order, onCom
           <div className="flex-1">
             <h3 className="text-xl font-bold text-green-800 mb-1">Alle Details geklärt!</h3>
             <p className="text-sm text-green-700 mb-4">
-              Alle Bedingungen wurden festgelegt. Der Fixer kann sich nun auf den Weg machen.
+              {order.status === 'awaiting_payment'
+                ? 'Alle Bedingungen wurden festgelegt. Bitte bezahle um fortzufahren.'
+                : 'Zahlung erfolgreich! Der Fixer kann sich nun auf den Weg machen.'}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div className="bg-white rounded-lg p-3">
@@ -181,7 +182,7 @@ export const OrderNegotiation: React.FC<OrderNegotiationProps> = ({ order, onCom
                     ? 'Fixer besorgt'
                     : order.negotiation?.partsResponsibility === 'customer'
                     ? 'Kunde besorgt'
-                    : 'Gemeinsam'}
+                    : 'Keine nötig'}
                 </p>
               </div>
               <div className="bg-white rounded-lg p-3">
@@ -289,14 +290,14 @@ export const OrderNegotiation: React.FC<OrderNegotiationProps> = ({ order, onCom
                 <span className="font-medium text-sm">Kunde besorgt Ersatzteile</span>
               </button>
               <button
-                onClick={() => setPartsResponsibility('shared')}
+                onClick={() => setPartsResponsibility('none')}
                 className={`p-3 border-2 rounded-lg text-left transition-all ${
-                  partsResponsibility === 'shared'
+                  partsResponsibility === 'none'
                     ? 'border-primary-600 bg-primary-50'
                     : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <span className="font-medium text-sm">Gemeinsame Beschaffung</span>
+                <span className="font-medium text-sm">Keine Ersatzteile nötig</span>
               </button>
             </div>
           </div>

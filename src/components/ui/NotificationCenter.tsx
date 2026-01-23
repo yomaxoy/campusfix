@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Check, X, Package, MessageCircle, Clock, MapPinCheck, Navigation, CheckCircle } from 'lucide-react';
+import { Bell, Check, X, Package, MessageCircle, Clock, MapPinCheck, Navigation, CheckCircle, DollarSign, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './Button';
 import { useNotificationStore } from '../../stores/useNotificationStore';
@@ -14,6 +14,9 @@ const notificationIcons: Record<Notification['type'], React.ReactNode> = {
   order_cancelled: <X className="w-5 h-5 text-red-600" />,
   fixer_arrived: <MapPinCheck className="w-5 h-5 text-blue-600" />,
   fixer_en_route: <Navigation className="w-5 h-5 text-blue-600" />,
+  payment_required: <CreditCard className="w-5 h-5 text-yellow-600" />,
+  payment_received: <DollarSign className="w-5 h-5 text-green-600" />,
+  payment_released: <DollarSign className="w-5 h-5 text-green-600" />,
 };
 
 export const NotificationCenter: React.FC = () => {
